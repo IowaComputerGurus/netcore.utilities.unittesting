@@ -1,9 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Version>0.0.0</Version>
-  </PropertyGroup>
-  <PropertyGroup>
     <PackageId>ICG.NetCore.Utilities.UnitTesting</PackageId>
     <Title>NetCore Utilities UnitTesting</Title>
     <Description>A collection of utilities designed to impove the creation process of UnitTesting for .NET Core and ASP.NET Core applications.</Description>
@@ -13,16 +10,33 @@
     <RepositoryUrl>https://github.com/IowaComputerGurus/netcore.utilities.unittesting</RepositoryUrl>
     <Authors>MitchelSellers;IowaComputerGurus</Authors>
     <Owners>IowaComputerGurus</Owners>
-    <PackageIconUrl>https://raw.githubusercontent.com/IowaComputerGurus/netcore.utilities.unittesting/master/icgAppIcon.png</PackageIconUrl>
+	<PackageIcon>icgAppIcon.png</PackageIcon>
+	<IsPackable>True</IsPackable>
+	<PublishRepositoryUrl>true</PublishRepositoryUrl>
+	<IncludeSymbols>true</IncludeSymbols>
+	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	<EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>ICG.NetCore.Utilities.UnitTesting</RootNamespace>
-    <IsPackable>true</IsPackable>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
+	<PropertyGroup Condition="'$GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="icgAppIcon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="5.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="6.0.0" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Xunit" Version="2.4.1" />
   </ItemGroup>
 

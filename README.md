@@ -1,7 +1,6 @@
 # netcore.utilities.unittesting ![](https://img.shields.io/github/license/iowacomputergurus/netcore.utilities.unittesting.svg)
-| Master | Develop |
-| --- | --- |
-| ![Master Branch Status](https://iowacomputergurus.visualstudio.com/ICG%20Open%20Source/_apis/build/status/NetCore%20Utilities%20UnitTesting?branchName=master) | ![Develop Branch Status](https://iowacomputergurus.visualstudio.com/ICG%20Open%20Source/_apis/build/status/NetCore%20Utilities%20UnitTesting?branchName=develop) |
+
+![Build Status](https://github.com/IowaComputerGurus/netcore.utilities.unittesting/actions/workflows/ci-build.yml/badge.svg)
 
 ## NuGet Package Information
 ICG.NetCore.Utilities.UnitTesting | ![](https://img.shields.io/nuget/v/icg.netcore.utilities.unittesting.svg) ![](https://img.shields.io/nuget/dt/icg.netcore.utilities.unittesting.svg)|
@@ -14,14 +13,14 @@ This library provides helpful items to speed the development of unit tests acros
 
 Install from NuGet
 
-```
+``` powershell
 Install-Package ICG.NetCore.Utilities.UnitTesting
 ```
 ### Register Dependencies (If using Dependency Injection)
 
 Inside of of your project's Startus.cs within the RegisterServices method add this line of code.
 
-```
+``` csharp
 services.UseIcgUnitTestUtilities();
 ```
 

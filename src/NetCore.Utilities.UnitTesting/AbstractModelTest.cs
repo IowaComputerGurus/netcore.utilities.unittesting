@@ -87,6 +87,34 @@ public abstract class AbstractModelTest
     }
 
     /// <summary>
+    ///     Asserts that an object has a <see cref="MaxLengthAttribute" /> for a particular property and that its value matches
+    ///     the <see cref="StringLengthAttribute" /> defined on the ef
+    /// </summary>
+    /// <param name="modelType">The model type to test</param>
+    /// <param name="modelProperty">The name of the property on the model</param>
+    /// <param name="efModelType">The ef core model type that is being validated against</param>
+    /// <param name="efModelProperty">The name of the property on the ef model</param>
+    /// <param name="errorMessage">
+    ///     The expected value for the Error Message property of the <see cref="MaxLengthAttribute" />
+    ///     this is optional.
+    /// </param>
+    public void AssertMaxLengthMatchingEfStringLengthDefinition(Type modelType, string modelProperty, Type efModelType,
+        string efModelProperty, string errorMessage = "")
+    {
+        var modelPropertyMaxLengthAttribute =
+            modelType.GetTypeInfo().GetProperty(modelProperty).GetCustomAttribute<MaxLengthAttribute>();
+        var efModelPropertyStringLengthAttribute = efModelType.GetTypeInfo().GetProperty(efModelProperty)
+            .GetCustomAttribute<StringLengthAttribute>();
+
+        Assert.NotNull(modelPropertyMaxLengthAttribute);
+        Assert.NotNull(efModelPropertyStringLengthAttribute);
+        Assert.Equal(efModelPropertyStringLengthAttribute.MaximumLength, modelPropertyMaxLengthAttribute.Length);
+        if (string.IsNullOrEmpty(errorMessage))
+            return;
+        Assert.Equal(errorMessage, modelPropertyMaxLengthAttribute.ErrorMessage);
+    }
+
+    /// <summary>
     ///     Creates a string with the specified length, helpful for validating minimum and maximum values for objects
     /// </summary>
     /// <param name="desiredLength">The desired length of the resultant string</param>

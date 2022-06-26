@@ -115,6 +115,9 @@ public enum ContextType
 ///     Provides a database fixture for xUnit tests that maintains and cleans a testing instance
 ///     of a MsSql database. It is important that this testing instance is not a real in-use database,
 ///     as all tables will be regularly truncated between test runs.
+///
+///     To use, inherit this class, specifying your own DbContext to use, and also a Collection Fixture
+///     definition: https://xunit.net/docs/shared-context#collection-fixture
 /// </summary>
 /// <remarks>
 ///     Using the in-memory provider is strongly discouraged: 

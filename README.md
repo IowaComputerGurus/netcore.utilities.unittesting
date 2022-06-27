@@ -18,7 +18,7 @@ Install-Package ICG.NetCore.Utilities.UnitTesting
 ```
 ### Register Dependencies (If using Dependency Injection)
 
-Inside of of your project's Startus.cs within the RegisterServices method add this line of code.
+Inside of of your project's Startup.cs within the RegisterServices method add this line of code.
 
 ``` csharp
 services.UseIcgUnitTestUtilities();
@@ -29,9 +29,10 @@ services.UseIcgUnitTestUtilities();
 | Object | Purpose |
 | ---- | --- |
 | AbstractDataServiceTest | Provides an abstract class that will build the proper options for an EF In Memory Database Provider|
-| AbstractModelTest | Provices an abstract class that contains helpful items for writing unit tests for model objects | 
+| AbstractModelTest | Provides an abstract class that contains helpful items for writing unit tests for model objects | 
 | SampleDataGenerator | Provides a utility for generating sample strings, dates, and the like for building unit tests, can be used with DI or standard creation |
-
+| XUnitLogger | Provides an implementation of `ILogger` that writes to xUnit's [`ITestOutputHelper`](https://xunit.net/docs/capturing-output) |
+| DatabaseFixture | A test fixture with helper methods for setup and verification that allows tests to be run against a SQL database. Uses [Respawn](https://github.com/jbogard/Respawn) to reset the database between test runs |
 Detailed information can be found in the XML Comment documentation for the objects, we are working to add to this document as well.
 
 ## Related Projects

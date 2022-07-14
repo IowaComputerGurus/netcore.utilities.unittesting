@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -167,7 +168,7 @@ public abstract class DatabaseFixture<TContext>
         DatabaseFixtureLoggingSettings? logging = null)
     {
         var optionsBuilder = new DbContextOptionsBuilder<TContext>();
-
+        
         _logSettings = logging ?? DatabaseFixtureLoggingSettings.Default;
 
         if (!_logSettings.Equals(DatabaseFixtureLoggingSettings.None))
@@ -443,7 +444,28 @@ public abstract class DatabaseFixture<TContext>
     /// <returns>A new <typeparamref name="TContext"/></returns>
     public TContext CreateDbContext(ContextType contextType)
     {
-        var lease = new DbContextLease(this, true);
+        return CreateDbContext(contextType, null);
+    }
+
+    /// <summary>
+    ///     Creates a new <typeparamref name="TContext"/> with the specified context type
+    /// </summary>
+    /// <param name="contextType">The context type to assign to the new <typeparamref name="TContext"/></param>
+    /// <param name="interceptors">A list of interceptors, or null for no interceptors</param>
+    /// <returns>A new <typeparamref name="TContext"/></returns>
+    public TContext CreateDbContext(ContextType contextType, IEnumerable<IDbCommandInterceptor>? interceptors)
+    {
+        DbContextLease lease;
+        if (interceptors == null)
+        {
+            lease = new DbContextLease(this, true);
+        }
+        else
+        {
+            var builder = new DbContextOptionsBuilder(_options);
+            builder.AddInterceptors(interceptors);
+            lease = new DbContextLease(new CustomContextPool<TContext>(Return, builder.Options), true);
+        }
         var dbcp = lease.Context;
         dbcp.SnapshotConfiguration();
         dbcp.SetLease(lease);
@@ -461,4 +483,92 @@ public abstract class DatabaseFixture<TContext>
     /// </summary>
     /// <returns>A new <typeparamref name="TContext"/></returns>
     public TContext CreateDbContext() => CreateDbContext(ContextType.Test);
+
+    /// <summary>
+    ///     Creates a <typeparamref name="TContext"/> that has interceptors attached to it to modify queries and their results
+    /// </summary>
+    /// <param name="interceptors">A list of interceptors to attach</param>
+    /// <returns>A new <typeparamref name="TContext"/> with the specified interceptors</returns>
+    public TContext CreateInterceptedDbContext(params IDbCommandInterceptor[] interceptors) => CreateDbContext(ContextType.Test, interceptors);
 }
+
+/// <summary>
+///     Will cause commands matching the specified predicate to fail
+/// </summary>
+public class FailCommandInterceptor : DbCommandInterceptor
+{
+    private readonly Func<DbCommand, bool> _predicate;
+    private readonly Exception _ex;
+
+    /// <summary>
+    ///     Creates a <see cref="FailCommandInterceptor"/>
+    /// </summary>
+    /// <param name="predicate">A predicate taking a DbCommand that returns true if the command should be failed</param>
+    /// <param name="ex">An exception to throw when the predicate is matched. If null, it will throw a plain Exception with a message</param>
+    public FailCommandInterceptor(Func<DbCommand, bool> predicate, Exception? ex = null)
+    {
+        _predicate = predicate;
+        _ex = ex ?? new Exception("Made to fail by FailCommandInterceptor");
+    }
+
+    /// <inheritdoc />
+    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = new CancellationToken())
+    {
+        if (_predicate(command))
+            throw _ex;
+
+        return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="FailCommandInterceptor"/> that causes INSERT statements to fail
+    /// </summary>
+    /// <param name="customException">A custom exception to throw, if null, it will throw a plain Exception with a message</param>
+    /// <returns> A new <see cref="FailCommandInterceptor"/></returns>
+    public static FailCommandInterceptor FailInserts(Exception? customException = null)
+        => new(c => c.CommandText.StartsWith("INSERT", StringComparison.OrdinalIgnoreCase), customException);
+
+    /// <summary>
+    /// Creates a <see cref="FailCommandInterceptor"/> that causes UPDATE statements to fail
+    /// </summary>
+    /// <param name="customException">A custom exception to throw, if null, it will throw a plain Exception with a message</param>
+    /// <returns> A new <see cref="FailCommandInterceptor"/></returns>
+    public static FailCommandInterceptor FailUpdates(Exception? customException = null)
+        => new(c => c.CommandText.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase), customException);
+
+    /// <summary>
+    /// Creates a <see cref="FailCommandInterceptor"/> that causes MERGE statements to fail
+    /// </summary>
+    /// <param name="customException">A custom exception to throw, if null, it will throw a plain Exception with a message</param>
+    /// <returns> A new <see cref="FailCommandInterceptor"/></returns>
+    public static FailCommandInterceptor FailMerges(Exception? customException = null)
+        => new(c => c.CommandText.StartsWith("MERGE", StringComparison.OrdinalIgnoreCase), customException);
+}
+
+// Here be dragons 🐲🐉
+#pragma warning disable EF1001 // Internal EF Core API usage.
+internal class CustomContextPool<TContext> : IDbContextPool<TContext>
+where TContext: DbContext
+{
+    private readonly Action<IDbContextPoolable> _returnCallback;
+    private readonly DbContextOptions _options;
+
+    public CustomContextPool(Action<IDbContextPoolable> returnCallback, DbContextOptions options)
+    {
+        _returnCallback = returnCallback;
+        _options = options;
+    }
+
+    public IDbContextPoolable Rent()
+        => (Activator.CreateInstance(typeof(TContext), _options) as IDbContextPoolable)!;
+
+    public void Return(IDbContextPoolable context)
+        => _returnCallback(context);
+
+    public ValueTask ReturnAsync(IDbContextPoolable context, CancellationToken cancellationToken = new CancellationToken())
+    {
+        _returnCallback(context);
+        return ValueTask.CompletedTask;
+    }
+}
+#pragma warning restore EF1001

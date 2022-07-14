@@ -543,6 +543,14 @@ public class FailCommandInterceptor : DbCommandInterceptor
     /// <returns> A new <see cref="FailCommandInterceptor"/></returns>
     public static FailCommandInterceptor FailMerges(Exception? customException = null)
         => new(c => c.CommandText.StartsWith("MERGE", StringComparison.OrdinalIgnoreCase), customException);
+
+    /// <summary>
+    /// Creates a <see cref="FailCommandInterceptor"/> that causes DELETE statements to fail
+    /// </summary>
+    /// <param name="customException">A custom exception to throw, if null, it will throw a plain Exception with a message</param>
+    /// <returns> A new <see cref="FailCommandInterceptor"/></returns>
+    public static FailCommandInterceptor FailDeletes(Exception? customException = null)
+        => new(c => c.CommandText.StartsWith("DELETE", StringComparison.OrdinalIgnoreCase), customException);
 }
 
 // Here be dragons 🐲🐉

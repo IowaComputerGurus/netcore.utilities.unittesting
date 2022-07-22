@@ -134,7 +134,7 @@ public abstract class DatabaseFixture<TContext>
     /// <summary>
     ///     The Checkpoint information used by Respawn to clear the database between test runs
     /// </summary>
-    private readonly Checkpoint _checkpoint;
+    private readonly Checkpoint? _checkpoint;
 
     /// <summary>
     ///     Options used for creating all database contexts handed out by this fixture.
@@ -283,7 +283,7 @@ public abstract class DatabaseFixture<TContext>
     /// <returns>
     ///     A task to await 
     /// </returns>
-    public async Task Reset()
+    public virtual async Task Reset()
     {
         var db = CreateDbContext(ContextType.Helper);
         var conn = db.Database.GetDbConnection();
@@ -291,7 +291,10 @@ public abstract class DatabaseFixture<TContext>
         if (conn.State == ConnectionState.Closed)
             await conn.OpenAsync();
 
-        await _checkpoint.Reset(conn);
+        if (_checkpoint != null)
+            await _checkpoint.Reset(conn);
+
+        await PostReset();
     }
 
     /// <summary>
@@ -302,17 +305,26 @@ public abstract class DatabaseFixture<TContext>
     /// <returns>A Task to await</returns>
     public async Task InitializeAsync()
     {
+        await CreateDatabase();
+        await Reset();
+    }
+
+    public virtual async Task CreateDatabase()
+    {
         var db = CreateDbContext(ContextType.Helper);
         await db.Database.MigrateAsync();
+    }
 
-        await Reset();
+    public virtual Task PostReset()
+    {
+        return Task.CompletedTask;
     }
 
     /// <summary>
     ///     Part of xUnit's IAsyncLifetime contract
     /// </summary>
     /// <returns>A completed task</returns>
-    public Task DisposeAsync()
+    public virtual Task DisposeAsync()
     {
         return Task.CompletedTask;
     }
@@ -375,6 +387,28 @@ public abstract class DatabaseFixture<TContext>
         return await db.Set<TEntity>().FindAsync(keyValues);
     }
 
+    /// <summary>
+    ///     Helper method to execute an arbitrary function taking a <typeparamref name="TContext"/> as a parameter, returning some value.
+    /// </summary>
+    /// <typeparam name="TResult">The data type to return from <paramref name="action"/></typeparam>
+    /// <param name="action">A function that takes a <typeparamref name="TContext"/> as a parameter, and returns <typeparamref name="TResult"/></param>
+    /// <returns>A task that returns the <typeparamref name="TResult"/> from <paramref name="action"/></returns>
+    public async Task<TResult> ExecuteAsync<TResult>(Func<TContext, Task<TResult>> action)
+    {
+        await using var context = CreateDbContext(ContextType.Helper);
+        return await action(context);
+    }
+
+    /// <summary>
+    ///     Helper method to execute an arbitrary function taking a <typeparamref name="TContext"/> returning nothing
+    /// </summary>
+    /// <param name="action">A function that takes a <typeparamref name="TContext"/> as a parameter, and returns a <see cref="Task"/></param>
+    /// <returns>An awaitable task</returns>
+    public async Task ExecuteAsync(Func<TContext, Task> action)
+    {
+        await using var context = CreateDbContext(ContextType.Helper);
+        await action(context);
+    }
 
     // Here be dragons 🐲🐉
 #pragma warning disable EF1001 // Internal EF Core API usage.
@@ -509,6 +543,15 @@ public class FailCommandInterceptor : DbCommandInterceptor
     {
         _predicate = predicate;
         _ex = ex ?? new Exception("Made to fail by FailCommandInterceptor");
+    }
+
+    /// <inheritdoc />
+    public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+    {
+        if (_predicate(command))
+            throw _ex;
+
+        return base.ReaderExecuting(command, eventData, result);
     }
 
     /// <inheritdoc />

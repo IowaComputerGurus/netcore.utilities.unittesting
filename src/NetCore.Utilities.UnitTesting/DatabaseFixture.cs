@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +45,7 @@ public class DatabaseFixtureLoggingSettings
     /// <summary>
     ///     Default logging settings. Writes logs only from contexts used for tests
     /// </summary>
-    public static readonly DatabaseFixtureLoggingSettings Default = new() { HelperContexts = false, TestContexts = true, MinimumLevel = LogLevel.Warning};
+    public static readonly DatabaseFixtureLoggingSettings Default = new() { HelperContexts = false, TestContexts = true, MinimumLevel = LogLevel.Warning };
 
     /// <summary>
     ///     Disables logging
@@ -125,10 +127,8 @@ public enum ContextType
 ///     https://docs.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy#in-memory-as-a-database-fake
 ///     Sqlite brings its own problems with different case sensitivity and different migrations needed.
 /// </remarks>
-#pragma warning disable EF1001 // Internal EF Core API usage.
 public abstract class DatabaseFixture<TContext>
-#pragma warning restore EF1001 // Internal EF Core API usage.
-    : IAsyncLifetime, IDbContextPool<TContext>, IDbContextFactory<TContext>
+    : IAsyncLifetime, IDbContextFactory<TContext>
     where TContext : DbContext
 {
     /// <summary>
@@ -162,13 +162,13 @@ public abstract class DatabaseFixture<TContext>
     ///     To customize which events get logged, override <see cref="LogFilter"/>
     /// </param>
     protected DatabaseFixture(
-        string connectionString, 
-        Action<DbContextOptionsBuilder<TContext>>? contextOptionsAction = null, 
-        Func<Checkpoint>? checkpointFunc = null, 
+        string connectionString,
+        Action<DbContextOptionsBuilder<TContext>>? contextOptionsAction = null,
+        Func<Checkpoint>? checkpointFunc = null,
         DatabaseFixtureLoggingSettings? logging = null)
     {
         var optionsBuilder = new DbContextOptionsBuilder<TContext>();
-        
+
         _logSettings = logging ?? DatabaseFixtureLoggingSettings.Default;
 
         if (!_logSettings.Equals(DatabaseFixtureLoggingSettings.None))
@@ -184,7 +184,7 @@ public abstract class DatabaseFixture<TContext>
         {
             contextOptionsAction(optionsBuilder);
         }
-        
+
         _options = optionsBuilder.Options;
 
         var constructor = typeof(TContext).GetConstructor(new[] { typeof(DbContextOptions<TContext>) });
@@ -222,7 +222,6 @@ public abstract class DatabaseFixture<TContext>
     {
         if (eventId == CoreEventId.ContextInitialized) return false;
         if (logLevel >= _logSettings.MinimumLevel) return true;
-        if (eventId == RelationalEventId.CommandExecuted) return true;
         return false;
     }
 
@@ -238,22 +237,20 @@ public abstract class DatabaseFixture<TContext>
     {
         if (!_outputHelper.TryGetTarget(out var target)) return;
 
-        var contextTypeDisplay = "";
-        var contextType = ContextType.Unknown;
-        if (eventData is DbContextEventData {Context: { } ctx})
-        {
-            if (_contextTypes.TryGetValue(ctx.ContextId, out contextType))
-            {
-                contextTypeDisplay = $"[{contextType}]";
-            }
-        }
+        var eventString = eventData.ToString();
+        eventString = eventString.ReplaceLineEndings("\n    ");
+        target.WriteLine($"[{XUnitLogger.LogLevelAsString(eventData.LogLevel)}][EntityFramework]\n    {eventString}\n");
 
-        if (_logSettings.LogEnabled(contextType))
-        {
-            var eventString = eventData.ToString();
-            eventString = eventString.ReplaceLineEndings("\n    ");
-            target.WriteLine($"[{XUnitLogger.LogLevelAsString(eventData.LogLevel)}]{contextTypeDisplay}[EntityFramework]\n    {eventString}\n");
-        }
+    }
+
+    private void LogExtended(EventData eventData, ContextType contextType, string? customMessage = null)
+    {
+        if (!_outputHelper.TryGetTarget(out var target)) return;
+        if (!_logSettings.LogEnabled(contextType)) return;
+
+        var eventString = customMessage ?? eventData.ToString();
+        eventString = eventString.ReplaceLineEndings("\n    ");
+        target.WriteLine($"[{XUnitLogger.LogLevelAsString(eventData.LogLevel)}][{contextType}][EntityFramework]\n    {eventString}\n");
     }
 
     /// <summary>
@@ -410,66 +407,6 @@ public abstract class DatabaseFixture<TContext>
         await action(context);
     }
 
-    // Here be dragons 🐲🐉
-#pragma warning disable EF1001 // Internal EF Core API usage.
-
-    /*
-     * This section hijacks the IDbContextPoolable interface on the DbContext and
-     * the IDbContextPool interface on this test fixture to get something resembling
-     * lifecycle hooks on an arbitrary DbContext. Both of these interfaces are internal
-     * to EF Core, hence the disabled warnings.
-     *
-     * This is used to maintain a lookup table between DbContexts generated by this
-     * fixture and how they are meant to be used in order to provide additional log
-     * annotations and filtering. This could have more uses in the future (associating
-     * a context with an ITestOutputHelper, to cut back on potential race conditions if
-     * tests are run in parallel).
-     *
-     * When a DbContext has SetLease called on it, when the context is being disposed
-     * it will call ContextDisposed on the lease, which in turn calls ReturnAsync on
-     * the IDbContextPool which created the lease (which is this fixture).
-     *
-     * So, when creating a DbContext to hand out, we assign it a lease and then put
-     * the ContextId of the context into a dictionary. When the lease is returned
-     * when the context is disposing, the ContextId is removed from the dictionary.
-     */
-
-    private readonly ConcurrentDictionary<DbContextId, ContextType> _contextTypes = new();
-
-    /// <summary>
-    ///     Creates a new DbContext
-    /// </summary>
-    /// <remarks>
-    ///     This method is used internally by EF to attempt to return an existing DbContext
-    ///     instance from a pool of created ones. Since this is just abusing the pool interface,
-    ///     this always just creates a new one.
-    /// </remarks>
-    /// <returns>A new DbContext of type <typeparamref name="TContext"/></returns>
-    public IDbContextPoolable Rent() => (Activator.CreateInstance(typeof(TContext), _options) as IDbContextPoolable)!;
-
-    /// <summary>
-    ///     Called by DbContexts when their lifetime expires.
-    /// </summary>
-    /// <param name="context">The context that is expiring</param>
-    public void Return(IDbContextPoolable context)
-    {
-        if (context is not TContext ctx) return;
-
-        // Don't really care if it can't be removed from the dictionary, or what the value was
-        _contextTypes.TryRemove(ctx.ContextId, out var _);
-    }
-
-    /// <summary>
-    ///     Called by DbContexts when their lifetime expires.
-    /// </summary>
-    /// <param name="context">The context that is expiring</param>
-    /// <param name="cancellationToken">A cancellation token</param>
-    /// <returns>A completed task, since this method does no async work</returns>
-    public ValueTask ReturnAsync(IDbContextPoolable context, CancellationToken cancellationToken = default)
-    {
-        Return(context);
-        return ValueTask.CompletedTask;
-    }
 
     /// <summary>
     ///     Creates a new <typeparamref name="TContext"/> with the specified context type
@@ -489,28 +426,21 @@ public abstract class DatabaseFixture<TContext>
     /// <returns>A new <typeparamref name="TContext"/></returns>
     public TContext CreateDbContext(ContextType contextType, IEnumerable<IDbCommandInterceptor>? interceptors)
     {
-        DbContextLease lease;
-        if (interceptors == null)
+        var builder = new DbContextOptionsBuilder(_options);
+
+        var finalInterceptors = (interceptors ?? Enumerable.Empty<IDbCommandInterceptor>())
+            .Append(new LoggingCommandInterceptor(contextType, LogExtended));
+
+        builder.AddInterceptors(finalInterceptors);
+
+        var newContext = Activator.CreateInstance(typeof(TContext), builder.Options) as TContext;
+        if (newContext == null)
         {
-            lease = new DbContextLease(this, true);
+            throw new InvalidOperationException($"Can't create a DbContext of type {typeof(TContext)}");
         }
-        else
-        {
-            var builder = new DbContextOptionsBuilder(_options);
-            builder.AddInterceptors(interceptors);
-            lease = new DbContextLease(new CustomContextPool<TContext>(Return, builder.Options), true);
-        }
-        var dbcp = lease.Context;
-        dbcp.SnapshotConfiguration();
-        dbcp.SetLease(lease);
 
-        var ctx = (TContext)dbcp;
-
-        _contextTypes.TryAdd(ctx.ContextId, contextType);
-
-        return ctx;
+        return newContext;
     }
-#pragma warning restore EF1001 // Internal EF Core API usage.
 
     /// <summary>
     ///     Creates a <typeparamref name="TContext"/> that is marked for use for the class under test.
@@ -524,6 +454,78 @@ public abstract class DatabaseFixture<TContext>
     /// <param name="interceptors">A list of interceptors to attach</param>
     /// <returns>A new <typeparamref name="TContext"/> with the specified interceptors</returns>
     public TContext CreateInterceptedDbContext(params IDbCommandInterceptor[] interceptors) => CreateDbContext(ContextType.Test, interceptors);
+}
+
+internal class LoggingCommandInterceptor : DbCommandInterceptor
+{
+    private readonly ContextType _contextType;
+    private readonly Action<EventData, ContextType, string?> _logCallback;
+
+    public LoggingCommandInterceptor(ContextType contextType, Action<EventData, ContextType, string?> logCallback)
+    {
+        _contextType = contextType;
+        _logCallback = logCallback;
+    }
+
+    private static string DbTypeToSqlType(DbParameter param) => param.DbType switch
+    {
+        DbType.AnsiString => $"varchar({param.Size})",
+        DbType.Binary => $"varbinary({param.Size})",
+        DbType.Byte => "tinyint",
+        DbType.Boolean => "bit",
+        DbType.Currency => "money",
+        DbType.Date => "date",
+        DbType.DateTime => "date",
+        DbType.Decimal => $"decimal({param.Precision},{param.Scale})",
+        DbType.Double => $"float",
+        DbType.Guid => "uniqueidentifier",
+        DbType.Int16 => "smallint",
+        DbType.Int32 => "int",
+        DbType.Int64 => "bigint",
+        DbType.SByte => "tinyint",
+        DbType.Single => "float",
+        DbType.String => $"nvarchar({param.Size})",
+        DbType.Time => "time",
+        DbType.UInt16 => "smallint",
+        DbType.UInt32 => "int",
+        DbType.UInt64 => "bigint",
+        DbType.VarNumeric => "decimal",
+        DbType.AnsiStringFixedLength => $"char({param.Size})",
+        DbType.StringFixedLength => $"nchar({param.Size})",
+        DbType.Xml => "xml",
+        DbType.DateTime2 => "datetime2",
+        DbType.DateTimeOffset => "datetimeoffset",
+        _ => throw new ArgumentOutOfRangeException(nameof(param.DbType), param.DbType, null)
+    };
+
+    private void LogReaderExecuted(DbCommand command, CommandExecutedEventData eventData)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Executed DbCommand ({eventData.Duration.TotalMilliseconds}ms)");
+        sb.AppendLine();
+
+        foreach (DbParameter p in command.Parameters)
+        {
+            sb.AppendLine($"declare {p.ParameterName} {DbTypeToSqlType(p)} = '{p.Value}'");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine(command.CommandText);
+
+        _logCallback(eventData, _contextType, sb.ToString());
+    }
+
+    public override DbDataReader ReaderExecuted(DbCommand command, CommandExecutedEventData eventData, DbDataReader result)
+    {
+        LogReaderExecuted(command, eventData);
+        return base.ReaderExecuted(command, eventData, result);
+    }
+
+    public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = new CancellationToken())
+    {
+        LogReaderExecuted(command, eventData);
+        return base.ReaderExecutedAsync(command, eventData, result, cancellationToken);
+    }
 }
 
 /// <summary>
@@ -599,7 +601,7 @@ public class FailCommandInterceptor : DbCommandInterceptor
 // Here be dragons 🐲🐉
 #pragma warning disable EF1001 // Internal EF Core API usage.
 internal class CustomContextPool<TContext> : IDbContextPool<TContext>
-where TContext: DbContext
+where TContext : DbContext
 {
     private readonly Action<IDbContextPoolable> _returnCallback;
     private readonly DbContextOptions _options;

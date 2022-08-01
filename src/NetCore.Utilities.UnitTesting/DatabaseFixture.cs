@@ -597,31 +597,3 @@ public class FailCommandInterceptor : DbCommandInterceptor
     public static FailCommandInterceptor FailDeletes(Exception? customException = null)
         => new(c => c.CommandText.StartsWith("DELETE", StringComparison.OrdinalIgnoreCase), customException);
 }
-
-// Here be dragons 🐲🐉
-#pragma warning disable EF1001 // Internal EF Core API usage.
-internal class CustomContextPool<TContext> : IDbContextPool<TContext>
-where TContext : DbContext
-{
-    private readonly Action<IDbContextPoolable> _returnCallback;
-    private readonly DbContextOptions _options;
-
-    public CustomContextPool(Action<IDbContextPoolable> returnCallback, DbContextOptions options)
-    {
-        _returnCallback = returnCallback;
-        _options = options;
-    }
-
-    public IDbContextPoolable Rent()
-        => (Activator.CreateInstance(typeof(TContext), _options) as IDbContextPoolable)!;
-
-    public void Return(IDbContextPoolable context)
-        => _returnCallback(context);
-
-    public ValueTask ReturnAsync(IDbContextPoolable context, CancellationToken cancellationToken = new CancellationToken())
-    {
-        _returnCallback(context);
-        return ValueTask.CompletedTask;
-    }
-}
-#pragma warning restore EF1001

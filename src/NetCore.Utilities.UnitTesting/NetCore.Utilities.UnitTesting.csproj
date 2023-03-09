@@ -38,7 +38,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Respawn" Version="6.0.0" />
+    <PackageReference Include="Respawn" Version="5.0.1" />
     <PackageReference Include="Xunit" Version="2.4.2" />
   </ItemGroup>
 

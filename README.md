@@ -4,13 +4,6 @@
 
 ![](https://img.shields.io/nuget/v/icg.netcore.utilities.unittesting.svg) ![](https://img.shields.io/nuget/dt/icg.netcore.utilities.unittesting.svg)
 
-[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=IowaComputerGurus_netcore.utilities.unittesting&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=IowaComputerGurus_netcore.utilities.unittesting)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=IowaComputerGurus_netcore.utilities.unittesting&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=IowaComputerGurus_netcore.utilities.unittesting)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=IowaComputerGurus_netcore.utilities.unittesting&metric=bugs)](https://sonarcloud.io/summary/new_code?id=IowaComputerGurus_netcore.utilities.unittesting)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=IowaComputerGurus_netcore.utilities.unittesting&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=IowaComputerGurus_netcore.utilities.unittesting)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=IowaComputerGurus_netcore.utilities.unittesting&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=IowaComputerGurus_netcore.utilities.unittesting)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=IowaComputerGurus_netcore.utilities.unittesting&metric=coverage)](https://sonarcloud.io/summary/new_code?id=IowaComputerGurus_netcore.utilities.unittesting)
-
 This library provides helpful items to speed the development of unit tests across all .NET Core project types.  We will update this library regularly with helpful base classes/implementations.
 
 ## Using ICG.NetCore.Utilities.UnitTesting

@@ -27,9 +27,9 @@ jobs:
     
     - name: Determine Version
       id: gitversion
-      uses: gittools/actions/gitversion/execute@v3.1.11
+      uses: gittools/actions/gitversion/execute@v0.10.2
       with:
-        useConfigFile: true 15
+        useConfigFile: true
       
     - name: Restore Packages
       run: dotnet restore "${{ env.solution-path }}"

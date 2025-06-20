@@ -20,12 +20,10 @@ jobs:
     - name: Ensure .NET Installed
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 8.0.x
         
     - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v3.1.11
-      with:
-        versionSpec: '6.0.5'
+      run: dotnet tool install --global GitVersion.Tool --version 5.12.0
     
     - name: Determine Version
       id: gitversion
@@ -39,4 +37,4 @@ jobs:
       run: dotnet build "${{ env.solution-path }}" --no-restore --configuration Release -p:version=${{ steps.gitversion.outputs.majorMinorPatch }}
     
     - name: Publish
-      run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.ICG_NUGET_API_KEY}}
+      run: dotnet nuget push **/*.nupkg -s 'https://api.nuget.org/v3/index.json' -k ${{secrets.ICG_NUGET_API_KEY}}

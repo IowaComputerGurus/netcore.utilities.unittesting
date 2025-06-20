@@ -1,26 +1,17 @@
 mode: ContinuousDeployment
-next-version: 6.0.5
+next-version: 1.0.0
 branches: 
-  develop:
-    regex: develop
-    label: 'alpha'
+  main:
+    regex: main
+    tag: 'alpha'
     increment: Patch
-    prevent-increment:
-      when-current-commit-tagged: true
     source-branches: []
-  hotfix:
-    regex: hotfix[/-]
-    source-branches: [develop]
-    prevent-increment:
-      when-current-commit-tagged: true
-    is-release-branch: true 
   pull-request:
     regex: (pull|pull\-requests|pr)[/-]
-    label: 'pr'
-    label-number-pattern: '[/-](?<number>\d+)[-/]'
+    tag: 'pr'
+    tag-number-pattern: '[/-](?<number>\d+)[-/]'
     increment: Patch
-    prevent-increment:
-      when-current-commit-tagged: true
+    prevent-increment-of-merged-branch-version: false
     is-release-branch: false
     source-branches: []
 ignore:

@@ -131,9 +131,9 @@ public abstract class DatabaseFixture<TContext>
     where TContext : DbContext
 {
     /// <summary>
-    ///     The Checkpoint information used by Respawn to clear the database between test runs
+    ///     The Respawner information used by Respawn to clear the database between test runs
     /// </summary>
-    private readonly Checkpoint _checkpoint;
+    private Respawner? _respawner;
 
     /// <summary>
     ///     Options used for creating all database contexts handed out by this fixture.
@@ -142,6 +142,7 @@ public abstract class DatabaseFixture<TContext>
 
     private WeakReference<ITestOutputHelper> _outputHelper = new(null!);
     private readonly DatabaseFixtureLoggingSettings _logSettings;
+    private readonly RespawnerOptions _respawnerOptions;
 
     /// <summary>
     ///     Creates an instance of the database fixture. Not normally called by testing code, the lifetime of this class is expected to be managed by xUnit.
@@ -151,8 +152,8 @@ public abstract class DatabaseFixture<TContext>
     ///     An action to set up the DbContextOptions used to create the context. If null, it will default to using Sql Server with the connection
     ///     string provided by the <paramref name="connectionString"/> parameter.
     /// </param>
-    /// <param name="checkpointFunc">
-    ///     A function returning a <see cref="Checkpoint"/> object. If null, a default configuration
+    /// <param name="respawnerOptionsFunc">
+    ///     A function returning a <see cref="RespawnerOptions"/> object. If null, a default configuration
     ///     that ignores the EF migrations table will be used.
     /// </param>
     /// <param name="logging">
@@ -163,7 +164,7 @@ public abstract class DatabaseFixture<TContext>
     protected DatabaseFixture(
         string connectionString, 
         Action<DbContextOptionsBuilder<TContext>>? contextOptionsAction = null, 
-        Func<Checkpoint>? checkpointFunc = null, 
+        Func<RespawnerOptions>? respawnerOptionsFunc = null, 
         DatabaseFixtureLoggingSettings? logging = null)
     {
         var optionsBuilder = new DbContextOptionsBuilder<TContext>();
@@ -192,9 +193,9 @@ public abstract class DatabaseFixture<TContext>
             throw new InvalidOperationException($"The DbContext type used by the database fixture must have a public constructor that takes a DbContextOptions.");
         }
 
-        if (checkpointFunc == null)
+        if (respawnerOptionsFunc == null)
         {
-            _checkpoint = new Checkpoint()
+            _respawnerOptions = new RespawnerOptions
             {
                 TablesToIgnore = new Table[] { "__EFMigrationsHistory" },
                 DbAdapter = DbAdapter.SqlServer
@@ -202,7 +203,7 @@ public abstract class DatabaseFixture<TContext>
         }
         else
         {
-            _checkpoint = checkpointFunc();
+            _respawnerOptions = respawnerOptionsFunc();
         }
     }
 
@@ -290,7 +291,12 @@ public abstract class DatabaseFixture<TContext>
         if (conn.State == ConnectionState.Closed)
             await conn.OpenAsync();
 
-        await _checkpoint.Reset(conn);
+        if (_respawner == null)
+        {
+            _respawner = await Respawner.CreateAsync(conn, _respawnerOptions);
+        }
+
+        await _respawner.ResetAsync(conn);
     }
 
     /// <summary>

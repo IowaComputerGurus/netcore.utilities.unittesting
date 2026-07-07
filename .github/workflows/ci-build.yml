@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    if: github.actor != 'dependabot[bot]' # Prevent any dependency updates
     runs-on: ubuntu-latest
     name: Validate Build
     env:

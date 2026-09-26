@@ -4,7 +4,7 @@
     <PackageId>ICG.NetCore.Utilities.UnitTesting</PackageId>
     <Title>NetCore Utilities UnitTesting</Title>
     <Description>A collection of utilities designed to impove the creation process of UnitTesting for .NET Core and ASP.NET Core applications.</Description>
-    <Copyright>Copyright 2021, IowaComputerGurus, Subject to the MIT License</Copyright>
+    <Copyright>Copyright 2026, IowaComputerGurus, Subject to the MIT License</Copyright>
     <PackageProjectUrl>https://github.com/IowaComputerGurus/netcore.utilities.unittesting</PackageProjectUrl>
     <PackageTags>aspnetcore;utility;unit-testing</PackageTags>
     <RepositoryUrl>https://github.com/IowaComputerGurus/netcore.utilities.unittesting</RepositoryUrl>
@@ -18,7 +18,7 @@
 	<EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>ICG.NetCore.Utilities.UnitTesting</RootNamespace>
 	<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -31,15 +31,15 @@
 		<None Include="icgAppIcon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.401">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Respawn" Version="6.2.1" />
-    <PackageReference Include="Xunit" Version="2.4.2" />
+    <PackageReference Include="Xunit" Version="2.9.3" />
   </ItemGroup>
 
 </Project>

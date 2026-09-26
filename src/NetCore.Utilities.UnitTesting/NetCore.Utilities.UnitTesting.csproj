@@ -4,7 +4,7 @@
     <PackageId>ICG.NetCore.Utilities.UnitTesting</PackageId>
     <Title>NetCore Utilities UnitTesting</Title>
     <Description>A collection of utilities designed to impove the creation process of UnitTesting for .NET Core and ASP.NET Core applications.</Description>
-    <Copyright>Copyright 2021, IowaComputerGurus, Subject to the MIT License</Copyright>
+    <Copyright>Copyright 2026, IowaComputerGurus, Subject to the MIT License</Copyright>
     <PackageProjectUrl>https://github.com/IowaComputerGurus/netcore.utilities.unittesting</PackageProjectUrl>
     <PackageTags>aspnetcore;utility;unit-testing</PackageTags>
     <RepositoryUrl>https://github.com/IowaComputerGurus/netcore.utilities.unittesting</RepositoryUrl>
@@ -18,7 +18,7 @@
 	<EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>ICG.NetCore.Utilities.UnitTesting</RootNamespace>
 	<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
